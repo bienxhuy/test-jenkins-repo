@@ -28,7 +28,7 @@ pipeline {
                     bat "docker exec ${DEV_CONTAINER} git clone -b master https://github.com/bienxhuy/test-instance.git /app/test-instance"
 
                     // Install dependencies and start the server
-                    bat "docker exec ${DEV_CONTAINER} bash -c 'cd /app/test-instance && npm install && npm run dev'"
+                    bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm install && npm run dev\""
                 }
             }
         }
@@ -46,7 +46,7 @@ pipeline {
                     bat "docker exec ${TEST_CONTAINER} git clone -b dev https://github.com/bienxhuy/devtest.git /app/devtest"
 
                     // Install Python dependencies
-                    bat "docker exec ${TEST_CONTAINER} bash -c 'cd /app/devtest && pip install -r requirements.txt'"
+                    bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
                 }
             }
         }
@@ -78,8 +78,10 @@ pipeline {
             echo 'Stopping services and cleaning up...'
             script {
                 // Stop and remove only the dev and test containers
-                bat "docker stop ${DEV_CONTAINER} ${TEST_CONTAINER} || echo 'Error stopping containers'"
-                bat "docker rm ${DEV_CONTAINER} ${TEST_CONTAINER} || echo 'Error removing containers'"
+                bat "docker stop ${DEV_CONTAINER} || echo 'Error stopping ${DEV_CONTAINER}'"
+                bat "docker rm ${DEV_CONTAINER} || echo 'Error removing ${DEV_CONTAINER}'"
+                bat "docker stop ${TEST_CONTAINER} || echo 'Error stopping ${TEST_CONTAINER}'"
+                bat "docker rm ${TEST_CONTAINER} || echo 'Error removing ${TEST_CONTAINER}'"
                 // Do not remove the existing Docker network or InfluxDB/Grafana containers
                 // Clean Jenkins workspace
                 cleanWs()
