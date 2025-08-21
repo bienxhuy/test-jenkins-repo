@@ -40,7 +40,6 @@ pipeline {
         stage('Collect Test Results') {
             steps {
                 echo 'Collecting test results...'
-                archiveArtifacts artifacts: 'test-app/**/*.xml', allowEmptyArchive: true
             }
         }
     }
