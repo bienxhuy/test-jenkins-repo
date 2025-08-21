@@ -2,37 +2,63 @@ pipeline {
     agent any
 
     environment {
-        DEV_REPO   = 'https://github.com/bienxhuy/test-instance.git'
-        DEV_BRANCH = 'master'
-        TEST_REPO  = 'https://github.com/bienxhuy/devtest.git'
-        TEST_BRANCH = 'dev'
+        // Use existing Docker Compose network
+        DOCKER_NETWORK = 'test_default'
+        // Define container names
+        DEV_CONTAINER = 'dev-instance'
+        TEST_CONTAINER = 'test-instance'
+        // Define BASE_URL for test framework (using container name for communication within Docker network)
+        BASE_URL = "http://${DEV_CONTAINER}:5173"
+        // Define InfluxDB host (using existing container name)
+        INFLUXDB_HOST = 'influxdb3'
+        INFLUXDB_PORT = '8181'
     }
 
     stages {
         stage('Deploy Code') {
             steps {
-                echo 'Cloning product repo...'
-                dir('dev-app') {
-                    git branch: "${DEV_BRANCH}", url: "${DEV_REPO}"
+                script {
+                    // Pull Node.js Docker image (specific version)
+                    bat 'docker pull node:22.16.0'
+
+                    // Run Node.js container in the existing network
+                    bat "docker run -d --name ${DEV_CONTAINER} --network ${DOCKER_NETWORK} -p 5173:5173 -v %WORKSPACE%:/app -w /app node:22.16.0 tail -f /dev/null"
+
+                    // Clone the repository inside the container
+                    bat "docker exec ${DEV_CONTAINER} git clone -b master https://github.com/bienxhuy/test-instance.git /app/test-instance"
+
+                    // Install dependencies and start the server
+                    bat "docker exec ${DEV_CONTAINER} bash -c 'cd /app/test-instance && npm install && npm run dev'"
                 }
             }
         }
 
         stage('Prepare Test Framework') {
             steps {
-                echo 'Cloning test framework repo...'
-                dir('test-app') {
-                    git branch: "${TEST_BRANCH}", url: "${TEST_REPO}"
+                script {
+                    // Pull Python Docker image (specific version)
+                    bat 'docker pull python:3.12.10'
+
+                    // Run Python container in the existing network with BASE_URL environment variable
+                    bat "docker run -d --name ${TEST_CONTAINER} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app -e BASE_URL=${BASE_URL} python:3.12.10 tail -f /dev/null"
+
+                    // Clone the test framework repository inside the container
+                    bat "docker exec ${TEST_CONTAINER} git clone -b dev https://github.com/bienxhuy/devtest.git /app/devtest"
+
+                    // Install Python dependencies
+                    bat "docker exec ${TEST_CONTAINER} bash -c 'cd /app/devtest && pip install -r requirements.txt'"
                 }
             }
         }
 
         stage('Execute Test') {
             steps {
-                echo 'Running containers with docker-compose...'
                 script {
-                    // Bring up dev + test containers
-                    bat 'docker compose up --abort-on-container-exit --exit-code-from tests'
+                    echo 'Executing tests...'
+                    // Run pytest in the test framework directory
+                    // bat "docker exec ${TEST_CONTAINER} bash -c 'cd /app/devtest && pytest'"
+                    // Note: Assumes pytest is configured to send results to InfluxDB at influxdb3:8181
+                    // If additional arguments are needed, e.g., --influxdb-host=${INFLUXDB_HOST} --influxdb-port=${INFLUXDB_PORT}, add them here
                 }
             }
         }
@@ -40,6 +66,9 @@ pipeline {
         stage('Collect Test Results') {
             steps {
                 echo 'Collecting test results...'
+                // Add steps to collect and process test results from the test instance
+                // Example: Copy results from test container to workspace
+                // bat "docker cp ${TEST_CONTAINER}:/app/devtest/results %WORKSPACE%/results"
             }
         }
     }
@@ -47,8 +76,14 @@ pipeline {
     post {
         always {
             echo 'Stopping services and cleaning up...'
-            bat 'docker compose down -v'
-            cleanWs()
+            script {
+                // Stop and remove only the dev and test containers
+                bat "docker stop ${DEV_CONTAINER} ${TEST_CONTAINER} || echo 'Error stopping containers'"
+                bat "docker rm ${DEV_CONTAINER} ${TEST_CONTAINER} || echo 'Error removing containers'"
+                // Do not remove the existing Docker network or InfluxDB/Grafana containers
+                // Clean Jenkins workspace
+                cleanWs()
+            }
         }
     }
 }
