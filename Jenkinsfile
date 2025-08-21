@@ -9,14 +9,28 @@ pipeline {
                 echo 'Building'
             }
         }
+
         stage('Test') {
             steps {
                 echo 'Testing'
             }
         }
-        stage('Deploy') {
+
+        stage('Deploy - Staging') {
             steps {
-                echo 'Deploying'
+                echo 'Deploying to staging'
+            }
+        }
+
+        stage('Sanity check') {
+            steps {
+                input "Does the staging environment look ok?"
+            }
+        }
+
+        stage('Deploy - Production') {
+            steps {
+                echo 'Deploying to production'
             }
         }
     }
