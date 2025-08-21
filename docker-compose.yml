@@ -9,7 +9,7 @@ services:
     ports:
       - "5173:5173"
     command: >
-      sh -c "npm install --unsafe-perm && npm run dev"
+      sh -c "npm cache clean --force && npm install --unsafe-perm && npm run dev"
 
   tests:
     image: python:3.11
