@@ -1,37 +1,55 @@
 pipeline {
     agent any
-    options {
-        skipStagesAfterUnstable()
+
+    environment {
+        DEV_REPO   = 'https://github.com/bienxhuy/test-instance.git'
+        DEV_BRANCH = 'master'
+        TEST_REPO  = 'https://github.com/bienxhuy/devtest.git'
+        TEST_BRANCH = 'dev'
     }
+
     stages {
-        stage('Build') {
+        stage('Deploy Code') {
             steps {
-                echo 'Building'
+                echo 'Cloning product repo...'
+                dir('dev-app') {
+                    git branch: "${DEV_BRANCH}", url: "${DEV_REPO}"
+                }
             }
         }
 
-        stage('Test') {
+        stage('Prepare Test Framework') {
             steps {
-                echo 'Testing'
+                echo 'Cloning test framework repo...'
+                dir('test-app') {
+                    git branch: "${TEST_BRANCH}", url: "${TEST_REPO}"
+                }
             }
         }
 
-        stage('Deploy - Staging') {
+        stage('Execute Test') {
             steps {
-                echo 'Deploying to staging'
+                echo 'Running containers with docker-compose...'
+                script {
+                    // Bring up dev + test containers
+                    bat 'docker compose up --abort-on-container-exit --exit-code-from tests'
+                }
             }
         }
 
-        stage('Sanity check') {
+        stage('Collect Test Results') {
             steps {
-                input "Does the staging environment look ok?"
+                echo 'Collecting test results...'
+                archiveArtifacts artifacts: 'test-app/**/*.xml', allowEmptyArchive: true
             }
         }
+    }
 
-        stage('Deploy - Production') {
-            steps {
-                echo 'Deploying to production'
-            }
+    post {
+        always {
+            echo 'Stopping services and cleaning up...'
+            bat 'docker compose down -v'
+            cleanWs()
         }
     }
 }
