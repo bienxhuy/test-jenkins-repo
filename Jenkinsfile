@@ -64,7 +64,7 @@ pipeline {
                 script {
                     echo 'Executing tests...'
                     // Run pytest in the test framework directory
-                    bat "docker exec ${TEST_CONTAINER} bash -c 'cd /app/devtest && pytest'"
+                    bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pytest\""
                     // Note: Assumes pytest is configured to send results to InfluxDB at influxdb3:8181
                     // If additional arguments are needed, e.g., --influxdb-host=${INFLUXDB_HOST} --influxdb-port=${INFLUXDB_PORT}, add them here
                 }
