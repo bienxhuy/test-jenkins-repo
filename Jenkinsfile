@@ -18,7 +18,7 @@ pipeline {
         stage('Deploy Code') {
             steps {
                 script {
-                    // Pull Node.js Docker image (specific version)
+                    // Pull Node.js Docker image
                     bat 'docker pull node:22.16.0'
 
                     // Run Node.js container in the existing network
@@ -27,8 +27,14 @@ pipeline {
                     // Clone the repository inside the container
                     bat "docker exec ${DEV_CONTAINER} git clone -b master https://github.com/bienxhuy/test-instance.git /app/test-instance"
 
-                    // Install dependencies and start the server
-                    bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm install && npm run dev\""
+                    // Install dependencies
+                    bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm install\""
+
+                    // Start the server in the background
+                    bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run dev\""
+
+                    // Wait for the server to be ready
+                    bat "docker exec ${DEV_CONTAINER} bash -c \"until curl -s ${BASE_URL}; do echo 'Waiting for server...'; sleep 2; done\""
                 }
             }
         }
