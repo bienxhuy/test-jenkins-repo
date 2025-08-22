@@ -42,17 +42,19 @@ pipeline {
         stage('Prepare Test Framework') {
             steps {
                 script {
-                    // Pull Python Docker image (specific version)
-                    bat 'docker pull python:3.12.10'
+                    withCredentials([usernamePassword(credentialsId: 'log-collector-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+                        // Pull Python Docker image (specific version)
+                        bat 'docker pull python:3.12.10'
 
-                    // Run Python container in the existing network with BASE_URL environment variable
-                    bat "docker run -d --name ${TEST_CONTAINER} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app -e BASE_URL=${BASE_URL} python:3.12.10 tail -f /dev/null"
+                        // Run Python container in the existing network with BASE_URL environment variable
+                        bat "docker run -d --name ${TEST_CONTAINER} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app -e BASE_URL=${BASE_URL} python:3.12.10 tail -f /dev/null"
 
-                    // Clone the test framework repository inside the container
-                    bat "docker exec ${TEST_CONTAINER} git clone -b dev https://github.com/bienxhuy/devtest.git /app/devtest"
+                        // Clone the test framework repository inside the container
+                        bat "docker exec ${TEST_CONTAINER} git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git /app/devtest"
 
-                    // Install Python dependencies
-                    bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
+                        // Install Python dependencies
+                        bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
+                    }
                 }
             }
         }
