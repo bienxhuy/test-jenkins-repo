@@ -8,7 +8,7 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         TEST_CONTAINER = 'test-instance'
         // Define BASE_URL for test framework (using container name for communication within Docker network)
-        BASE_URL = "http://${DEV_CONTAINER}:5173"
+        BASE_URL = "http://${DEV_CONTAINER}:5174"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'influxdb3'
         INFLUXDB_PORT = '8181'
@@ -22,7 +22,7 @@ pipeline {
                     bat 'docker pull node:22.16.0'
 
                     // Run Node.js container in the existing network
-                    bat "docker run -d --name ${DEV_CONTAINER} --network ${DOCKER_NETWORK} -p 5173:5173 -v %WORKSPACE%:/app -w /app node:22.16.0 tail -f /dev/null"
+                    bat "docker run -d --name ${DEV_CONTAINER} --network ${DOCKER_NETWORK} -p 5174:5174 -v %WORKSPACE%:/app -w /app node:22.16.0 tail -f /dev/null"
 
                     // Clone the repository inside the container
                     bat "docker exec ${DEV_CONTAINER} git clone -b master https://github.com/bienxhuy/test-instance.git /app/test-instance"
