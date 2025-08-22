@@ -34,7 +34,7 @@ pipeline {
                     bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run dev\""
 
                     // Wait for the server to be ready
-                    bat "docker exec ${DEV_CONTAINER} bash -c \"until curl -s ${BASE_URL}; do echo 'Waiting for server...'; sleep 2; done\""
+                    // bat "docker exec ${DEV_CONTAINER} bash -c \"until curl -s ${BASE_URL}; do echo 'Waiting for server...'; sleep 2; done\""
                 }
             }
         }
