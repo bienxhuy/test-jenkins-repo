@@ -62,7 +62,7 @@ pipeline {
             }
         }
 
-        stage('Data Manipulation') {
+        stage('Post Execution') {
             steps {
                 script {
                     bat "cd %WORKSPACE%\\devtest && python ./postexec/main.py"
