@@ -37,7 +37,7 @@ pipeline {
                     // Start the server in the background
                     bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host 0.0.0.0\""
 
-                    sleep time: 20, unit: 'SECONDS'
+                    sleep time: 60, unit: 'SECONDS'
                 }
             }
         }
@@ -108,8 +108,8 @@ pipeline {
                 // Stop and remove only the dev and test containers
                 bat "docker stop ${DEV_CONTAINER} || echo 'Error stopping ${DEV_CONTAINER}'"
                 bat "docker rm ${DEV_CONTAINER} || echo 'Error removing ${DEV_CONTAINER}'"
-                bat "docker stop ${TEST_CONTAINER} || echo 'Error stopping ${TEST_CONTAINER}'"
-                bat "docker rm ${TEST_CONTAINER} || echo 'Error removing ${TEST_CONTAINER}'"
+                // bat "docker stop ${TEST_CONTAINER} || echo 'Error stopping ${TEST_CONTAINER}'"
+                // bat "docker rm ${TEST_CONTAINER} || echo 'Error removing ${TEST_CONTAINER}'"
                 // Do not remove the existing Docker network or InfluxDB/Grafana containers
                 // Clean Jenkins workspace
                 cleanWs()
