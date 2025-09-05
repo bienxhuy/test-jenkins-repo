@@ -8,11 +8,11 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         DEV_PORT = "${env.DEV_PORT ?: '4173'}"
         TEST_CONTAINER = 'test-instance'
-        // Define BASE_URL for test framework (using container name for communication within Docker network)
         BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'influxdb3'
         INFLUXDB_PORT = '8181'
+        INFLUXDB_TOKEN = credentials('influxdb-token')
     }
 
     stages {
@@ -36,60 +36,31 @@ pipeline {
 
                     // Start the server in the background
                     bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host 0.0.0.0\""
-
-                    sleep time: 60, unit: 'SECONDS'
                 }
             }
         }
 
-        // stage('Prepare Test Framework') {
-        //     steps {
-        //         script {
-        //             withCredentials([usernamePassword(credentialsId: 'log-collector-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
-        //                 // Pull Python Docker image (specific version)
-        //                 bat 'docker pull python:3.12.10'
+        stage('Prepare Test Framework') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'log-collector-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+                        // Clone the test framework repository
+                        bat "git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git %WORKSPACE%\\devtest"
 
-        //                 // Run Python container in the existing network with BASE_URL environment variable
-        //                 bat "docker run -d --name ${TEST_CONTAINER} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app -e BASE_URL=${BASE_URL} python:3.12.10 tail -f /dev/null"
+                        // Install Python dependencies
+                        bat "cd %WORKSPACE%\\devtest && pip install -r requirements.txt"
+                    }
+                }
+            }
+        }
 
-        //                 // Install system dependencies, Google Chrome, and ChromeDriver
-        //                 bat """
-        //                     docker exec ${TEST_CONTAINER} bash -c ^
-        //                     "apt-get update && ^
-        //                     apt-get install -y wget unzip gnupg2 && ^
-        //                     wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && ^
-        //                     echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' >> /etc/apt/sources.list.d/google-chrome.list && ^
-        //                     apt-get update && ^
-        //                     apt-get install -y google-chrome-stable && ^
-        //                     CHROME_VERSION=\\$(google-chrome --version | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+') && ^
-        //                     wget -O /tmp/chromedriver.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/\\${CHROME_VERSION}/linux64/chromedriver-linux64.zip && ^
-        //                     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && ^
-        //                     mv /usr/local/bin/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && ^
-        //                     chmod +x /usr/local/bin/chromedriver && ^
-        //                     rm /tmp/chromedriver.zip"
-        //                 """
-
-        //                 // Clone the test framework repository inside the container
-        //                 bat "docker exec ${TEST_CONTAINER} git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git /app/devtest"
-
-        //                 // Install Python dependencies
-        //                 bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
-        //             }
-        //         }
-        //     }
-        // }
-
-        // stage('Execute Test') {
-        //     steps {
-        //         script {
-        //             echo 'Executing tests...'
-        //             // Run pytest in the test framework directory
-        //             bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pytest\""
-        //             // Note: Assumes pytest is configured to send results to InfluxDB at influxdb3:8181
-        //             // If additional arguments are needed, e.g., --influxdb-host=${INFLUXDB_HOST} --influxdb-port=${INFLUXDB_PORT}, add them here
-        //         }
-        //     }
-        // }
+        stage('Execute Test') {
+            steps {
+                script {
+                    bat "cd %WORKSPACE%\\devtest && pytest"
+                }
+            }
+        }
 
         // stage('Data Manipulation') {
         //     steps {
