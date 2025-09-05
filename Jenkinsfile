@@ -8,10 +8,10 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         DEV_PORT = "${env.DEV_PORT ?: '4173'}"
         TEST_CONTAINER = 'test-instance'
-        BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
+        BASE_URL = "http://localhost:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
-        INFLUXDB_HOST = 'influxdb3'
-        INFLUXDB_PORT = '8181'
+        INFLUXDB_HOST = 'http://localhost:8181/'
+        INFLUX_DATABASE = 'testdb'
         INFLUXDB_TOKEN = credentials('influxdb-token')
     }
 
@@ -62,14 +62,13 @@ pipeline {
             }
         }
 
-        // stage('Data Manipulation') {
-        //     steps {
-        //         echo 'Collecting test results...'
-        //         // Add steps to collect and process test results from the test instance
-        //         // Example: Copy results from test container to workspace
-        //         // bat "docker cp ${TEST_CONTAINER}:/app/devtest/results %WORKSPACE%/results"
-        //     }
-        // }
+        stage('Data Manipulation') {
+            steps {
+                script {
+                    bat "cd %WORKSPACE%\\devtest && python ./postexec/main.py"
+                }
+            }
+        }
     }
 
     post {
