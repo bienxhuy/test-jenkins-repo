@@ -3,10 +3,10 @@ pipeline {
 
     environment {
         // Use existing Docker Compose network
-        DOCKER_NETWORK = env.DOCKER_NETWORK ?: 'test_default'
+        DOCKER_NETWORK = "${env.DOCKER_NETWORK ?: 'test_default'}"
         // Define container names
         DEV_CONTAINER = 'dev-instance'
-        DEV_PORT = env.DEV_PORT ?: '4173'
+        DEV_PORT = "${env.DEV_PORT ?: '4173'}"
         TEST_CONTAINER = 'test-instance'
         // Define BASE_URL for test framework (using container name for communication within Docker network)
         BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
