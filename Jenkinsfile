@@ -3,14 +3,14 @@ pipeline {
 
     environment {
         // Use existing Docker Compose network
-        DOCKER_NETWORK = "${env.DOCKER_NETWORK ?: 'test_default'}"
+        DOCKER_NETWORK = "test_default"
         // Define container names
         DEV_CONTAINER = 'dev-instance'
-        DEV_PORT = "${env.DEV_PORT ?: '4173'}"
+        DEV_PORT = "4173"
         TEST_CONTAINER = 'test-instance'
-        BASE_URL = "http://localhost:${DEV_PORT}"
+        BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
-        INFLUXDB_HOST = 'http://localhost:8181/'
+        INFLUXDB_HOST = 'http://influxdb3:8181/'
         INFLUX_DATABASE = 'testdb'
         INFLUXDB_TOKEN = credentials('influxdb-token')
     }
