@@ -11,7 +11,7 @@ pipeline {
         BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'http://influxdb3:8181/'
-        INFLUX_DATABASE = 'testdb'
+        INFLUXDB_DATABASE = 'testdb'
         INFLUXDB_TOKEN = credentials('influxdb-token')
     }
 
@@ -41,7 +41,13 @@ pipeline {
         stage('Prepare Test Framework') {
             steps {
                 // Prepare instance
-                bat "docker run -d --name ${TEST_CONTAINER} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
+                bat "docker run -d --name ${TEST_CONTAINER} \\
+                -e BASE_URL=${BASE_URL} \\
+                -e INFLUX_HOST=${INFLUXDB_HOST} \\
+                -e INFLUX_TOKEN=${INFLUXDB_TOKEN} \\
+                -e INFLUX_DATABASE=${INFLUXDB_DATABASE} \\
+                --network ${DOCKER_NETWORK} \\
+                -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
 
                 withCredentials([usernamePassword(credentialsId: 'log-collector-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
                     // Clone the test framework repository
