@@ -8,7 +8,7 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         DEV_PORT = "4173"
         TEST_CONTAINER = 'test-instance'
-        BASE_URL = "http://${DEV_CONTAINER}:${DEV_PORT}"
+        BASE_URL = "http://localhost:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'http://influxdb3:8181/'
         INFLUXDB_DATABASE = 'testdb'
