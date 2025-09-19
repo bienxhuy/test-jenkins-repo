@@ -8,7 +8,6 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         DEV_PORT = "4173"
         TEST_CONTAINER = 'test-instance'
-        BASE_URL = "http://172.19.0.2:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'http://influxdb3:8181/'
         INFLUXDB_DATABASE = 'testdb'
@@ -16,67 +15,170 @@ pipeline {
     }
 
     stages {
-        stage('Deploy Code') {
-            steps {
-                // Pull Node.js Docker image
-                bat 'docker pull node:22.16.0'
+        stage('Prepare Environment') {
+            parallel {
+                stage('Prepare Dev Instance') {
+                    steps {
+                        // Pull Node.js Docker image
+                        echo 'Pulling Node.js Docker image...'
+                        echo '-----------------------------------'
+                        bat 'docker pull node:22.16.0'
+                        echo 'Node.js image pulled successfully.'
+                        echo '-----------------------------------'
 
-                // Run Node.js container in the existing network
-                bat "docker run -d --name ${DEV_CONTAINER} --network ${DOCKER_NETWORK} -p ${DEV_PORT}:${DEV_PORT} -v %WORKSPACE%:/app -w /app node:22.16.0 tail -f /dev/null"
+                        // Run Node.js container in the existing network
+                        echo 'Starting dev instance container...'
+                        echo '-----------------------------------'
+                        bat "docker run -d --name ${DEV_CONTAINER} --network ${DOCKER_NETWORK} -p ${DEV_PORT}:${DEV_PORT} -v %WORKSPACE%:/app -w /app node:22.16.0 tail -f /dev/null"
+                        echo 'Dev instance container started successfully.'
+                        echo '-----------------------------------'
 
-                // Clone the repository inside the container
-                bat "docker exec ${DEV_CONTAINER} git clone -b master https://github.com/bienxhuy/test-instance.git /app/test-instance"
+                        // Clone the repository inside the container
+                        echo 'Cloning repository...'
+                        echo '-----------------------------------'
+                        bat "docker exec ${DEV_CONTAINER} git clone -b ${branch} https://github.com/bienxhuy/test-instance.git /app/test-instance"
+                        echo 'Repository cloned successfully.'
+                        echo '-----------------------------------'
 
-                // Install dependencies
-                bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm install\""
+                        // Install dependencies
+                        echo 'Installing dependencies...'
+                        echo '-----------------------------------'
+                        bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm install\""
+                        echo 'Dependencies installed successfully.'
+                        echo '-----------------------------------'
 
-                // Build the application
-                bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run build\""
+                        // Build the application
+                        echo 'Building application...'
+                        echo '-----------------------------------'
+                        bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run build\""
+                        echo 'Application built successfully.'
+                        echo '-----------------------------------'
 
-                // Start the server in the background
-                bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host 0.0.0.0\""
-            }
-        }
-
-        stage('Prepare Test Framework') {
-            steps {
-                // Prepare instance
-                bat "docker run -d --name ${TEST_CONTAINER} -e BASE_URL=${BASE_URL} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
-
-                withCredentials([usernamePassword(credentialsId: 'log-collector-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
-                    // Clone the test framework repository
-                    bat "docker exec ${TEST_CONTAINER} git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git /app/devtest"
+                        // Start the server in the background
+                        echo 'Starting dev instance server...'
+                        echo '-----------------------------------'
+                        bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host 0.0.0.0\""
+                        echo 'Dev instance server started successfully.'
+                        echo '-----------------------------------'
+                    }
                 }
 
-                // Install Python dependencies
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
+                stage('Prepare Test Instance') {
+                    steps {
+                        // Prepare instance
+                        echo 'Running Python-Chrome Docker image...'
+                        echo '-----------------------------------'
+                        bat "docker run -d --name ${TEST_CONTAINER} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
+                        echo 'Test instance container started successfully.'
+                        echo '-----------------------------------'
+
+                        // Clone the test framework repository using credentials
+                        echo 'Cloning test framework repository...'
+                        echo '-----------------------------------'
+                        withCredentials([usernamePassword(credentialsId: 'devtest', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+                            // Clone the test framework repository
+                            bat "docker exec ${TEST_CONTAINER} git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git /app/devtest"
+                        }
+                        echo 'Test framework repository cloned successfully.'
+                        echo '-----------------------------------'
+
+                        // Install Python dependencies
+                        echo 'Installing Python dependencies...'
+                        echo '-----------------------------------'
+                        bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install -r requirements.txt\""
+                        echo 'Python dependencies installed successfully.'
+                        echo '-----------------------------------'
+                    }
+                }
             }
         }
 
+        stage('Get Dev Instance IP') {
+                steps {
+                    script {
+                        echo 'Retrieving dev instance IP address...'
+                        echo '-----------------------------------'
+                        // Get the IP address of the dev instance container
+                        def rawOutput = bat(
+                            script: "docker inspect -f \"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\" ${DEV_CONTAINER}",
+                            returnStdout: true
+                        ).trim()
+
+                        // Take only the last line (the real IP)
+                        def ip = rawOutput.readLines()[-1].trim()
+                        env.BASE_URL = "http://${ip}:${DEV_PORT}"
+                        echo "Dev instance host: ${env.BASE_URL}"
+                        echo '-----------------------------------'
+                        
+                        // Set the BASE_URL environment variable in the test container
+                        bat "docker exec ${TEST_CONTAINER} bash -c \"export BASE_URL=${env.BASE_URL}\""
+                        echo "BASE_URL set to ${env.BASE_URL} in test container."
+                        echo '-----------------------------------'
+                    }
+                }
+            }
+        
         stage('Execute Test') {
             steps {
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pytest\""
+                echo 'Starting test execution...'
+                echo '-----------------------------------'
+                // Execute tests with pytest, passing necessary environment variables
+                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && export BUILD_NUMBER=${env.BUILD_NUMBER} && export BUILD_URL=${env.BUILD_URL} && pytest\""
+                echo 'Test execution completed.'
+                echo '-----------------------------------'
             }
         }
 
         stage('Post Execution') {
             steps {
+                echo 'Starting post execution script...'
+                echo '-----------------------------------'
+                // Run post execution script
                 bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && python ./postexec/main.py\""
+                echo 'Post execution script completed.'
+                echo '-----------------------------------'
             }
         }
     }
 
     post {
-        always {
+        // Archive logs if the pipeline fails before reaching the cleanup stage
+        failure {
+            // Archive logs on failure
+            echo 'Pipeline failed. Archiving all logs in in %WORKSPACE%/devtest/logs/logs_data/'
+            echo '-----------------------------------'
+            archiveArtifacts artifacts: 'devtest/logs/logs_data/**', allowEmptyArchive: true
+            echo 'Logs archived successfully.'
+            echo '-----------------------------------'
+        }
+        
+        // Always perform cleanup actions after all stages
+        cleanup {
+            echo 'Pipeline finished.'
+            echo '-----------------------------------'
             echo 'Stopping services and cleaning up...'
+            echo '-----------------------------------'
+
             // Stop and remove only the dev and test containers
-            bat "docker stop ${DEV_CONTAINER} || echo 'Error stopping ${DEV_CONTAINER}'"
-            bat "docker rm ${DEV_CONTAINER} || echo 'Error removing ${DEV_CONTAINER}'"
-            bat "docker stop ${TEST_CONTAINER} || echo 'Error stopping ${TEST_CONTAINER}'"
-            bat "docker rm ${TEST_CONTAINER} || echo 'Error removing ${TEST_CONTAINER}'"
-            // Do not remove the existing Docker network or InfluxDB/Grafana containers
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                bat "docker stop ${DEV_CONTAINER} || echo 'Error stopping ${DEV_CONTAINER}'"
+                bat "docker rm ${DEV_CONTAINER} || echo 'Error removing ${DEV_CONTAINER}'"
+            }
+            echo 'Dev instance container stopped and removed.'
+            echo '-----------------------------------'
+
+            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                bat "docker stop ${TEST_CONTAINER} || echo 'Error stopping ${TEST_CONTAINER}'"
+                bat "docker rm ${TEST_CONTAINER} || echo 'Error removing ${TEST_CONTAINER}'"
+            }
+            echo 'Test instance container stopped and removed.'
+            echo '-----------------------------------'
+
             // Clean Jenkins workspace
             cleanWs()
+            echo 'Workspace cleaned.'
+            echo '-----------------------------------'
+            echo 'Pipeline finished.'
         }
     }
 }
