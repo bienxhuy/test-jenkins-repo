@@ -36,7 +36,7 @@ pipeline {
                         // Clone the repository inside the container
                         echo 'Cloning repository...'
                         echo '-----------------------------------'
-                        bat "docker exec ${DEV_CONTAINER} git clone -b ${branch} https://github.com/bienxhuy/test-instance.git /app/test-instance"
+                        bat "docker exec ${DEV_CONTAINER} git clone -b ${BRANCH} https://github.com/bienxhuy/test-instance.git /app/test-instance"
                         echo 'Repository cloned successfully.'
                         echo '-----------------------------------'
 
@@ -123,7 +123,7 @@ pipeline {
                 echo 'Starting test execution...'
                 echo '-----------------------------------'
                 // Execute tests with pytest, passing necessary environment variables
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && export BUILD_NUMBER=${env.BUILD_NUMBER} && export BUILD_URL=${env.BUILD_URL} && pytest\""
+                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && export BUILD_NUMBER=${env.BUILD_NUMBER} && export BUILD_URL=${env.BUILD_URL} && export BRANCH=${BRANCH} && pytest\""
                 echo 'Test execution completed.'
                 echo '-----------------------------------'
             }
