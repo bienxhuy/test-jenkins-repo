@@ -68,7 +68,7 @@ pipeline {
                         // Prepare instance
                         echo 'Running Python-Chrome Docker image...'
                         echo '-----------------------------------'
-                        bat "docker run -d --name ${TEST_CONTAINER} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
+                        bat "docker run -d --name ${TEST_CONTAINER} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} -e BUILD_NUMBER=${env.BUILD_NUMBER} -e BUILD_URL=${env.BUILD_URL} -e BRANCH=${env.BRANCH} -e AUTHOR=${env.AUTHOR} -e HOST=${env.HOST} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
                         echo 'Test instance container started successfully.'
                         echo '-----------------------------------'
 
@@ -123,7 +123,7 @@ pipeline {
                 echo 'Starting test execution...'
                 echo '-----------------------------------'
                 // Execute tests with pytest, passing necessary environment variables
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && export BUILD_NUMBER=${env.BUILD_NUMBER} && export BUILD_URL=${env.BUILD_URL} && export BRANCH=${BRANCH} && pytest\""
+                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && pytest\""
                 echo 'Test execution completed.'
                 echo '-----------------------------------'
             }
