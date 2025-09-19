@@ -134,7 +134,7 @@ pipeline {
                 echo 'Starting post execution script...'
                 echo '-----------------------------------'
                 // Run post execution script
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && python ./postexec/main.py\""
+                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && python ./postexec_main.py\""
                 echo 'Post execution script completed.'
                 echo '-----------------------------------'
             }
@@ -150,6 +150,9 @@ pipeline {
             archiveArtifacts artifacts: 'devtest/logs/logs_data/**', allowEmptyArchive: true
             echo 'Logs archived successfully.'
             echo '-----------------------------------'
+
+            // Archive screenshots on failure
+            echo 'Archiving screenshots in %WORKSPACE%/devtest/reports/screenshots/'
         }
         
         // Always perform cleanup actions after all stages
