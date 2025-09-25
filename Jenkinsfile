@@ -70,7 +70,7 @@ pipeline {
                         // Prepare instance
                         echo 'Running Python-Chrome Docker image...'
                         echo '-----------------------------------'
-                        bat "docker run -d --name ${TEST_CONTAINER} -e BASE_URL=${BASE_URL} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} -e BUILD_NUMBER=${env.BUILD_NUMBER} -e BUILD_URL=${env.BUILD_URL} -e BRANCH=${env.BRANCH} -e AUTHOR=${env.AUTHOR} -e HOST=${env.HOST} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
+                        bat "docker run -d --name ${TEST_CONTAINER} -e BASE_URL=${BASE_URL} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=%INFLUXDB_TOKEN% -e INFLUX_DATABASE=${INFLUXDB_DATABASE} -e BUILD_NUMBER=${env.BUILD_NUMBER} -e BUILD_URL=${env.BUILD_URL} -e BRANCH=${env.BRANCH} -e AUTHOR=${env.AUTHOR} -e HOST=${env.HOST} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
                         echo 'Test instance container started successfully.'
                         echo '-----------------------------------'
 
@@ -79,7 +79,7 @@ pipeline {
                         echo '-----------------------------------'
                         withCredentials([usernamePassword(credentialsId: 'devtest', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
                             // Clone the test framework repository
-                            bat "docker exec ${TEST_CONTAINER} git clone -b dev https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/bienxhuy/devtest.git /app/devtest"
+                            bat "docker exec ${TEST_CONTAINER} git clone -b dev https://%GIT_USERNAME%:%GIT_TOKEN%@github.com/bienxhuy/devtest.git /app/devtest"
                         }
                         echo 'Test framework repository cloned successfully.'
                         echo '-----------------------------------'
