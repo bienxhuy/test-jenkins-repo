@@ -8,6 +8,8 @@ pipeline {
         DEV_CONTAINER = 'dev-instance'
         DEV_PORT = "4173"
         TEST_CONTAINER = 'test-instance'
+        // Base URL of container
+        BASE_URL = "http:${DEV_CONTAINER}:${DEV_PORT}"
         // Define InfluxDB host (using existing container name)
         INFLUXDB_HOST = 'http://influxdb3:8181/'
         INFLUXDB_DATABASE = 'testdb'
@@ -57,7 +59,7 @@ pipeline {
                         // Start the server in the background
                         echo 'Starting dev instance server...'
                         echo '-----------------------------------'
-                        bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host 0.0.0.0\""
+                        bat "docker exec -d ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm run preview -- --host ${DEV_CONTAINER}\""
                         echo 'Dev instance server started successfully.'
                         echo '-----------------------------------'
                     }
@@ -68,7 +70,7 @@ pipeline {
                         // Prepare instance
                         echo 'Running Python-Chrome Docker image...'
                         echo '-----------------------------------'
-                        bat "docker run -d --name ${TEST_CONTAINER} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} -e BUILD_NUMBER=${env.BUILD_NUMBER} -e BUILD_URL=${env.BUILD_URL} -e BRANCH=${env.BRANCH} -e AUTHOR=${env.AUTHOR} -e HOST=${env.HOST} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
+                        bat "docker run -d --name ${TEST_CONTAINER} -e BASE_URL=${BASE_URL} -e INFLUX_HOST=${INFLUXDB_HOST} -e INFLUX_TOKEN=${INFLUXDB_TOKEN} -e INFLUX_DATABASE=${INFLUXDB_DATABASE} -e BUILD_NUMBER=${env.BUILD_NUMBER} -e BUILD_URL=${env.BUILD_URL} -e BRANCH=${env.BRANCH} -e AUTHOR=${env.AUTHOR} -e HOST=${env.HOST} --network ${DOCKER_NETWORK} -v %WORKSPACE%:/app -w /app python-chrome tail -f /dev/null"
                         echo 'Test instance container started successfully.'
                         echo '-----------------------------------'
 
@@ -92,38 +94,13 @@ pipeline {
                 }
             }
         }
-
-        stage('Get Dev Instance IP') {
-                steps {
-                    script {
-                        echo 'Retrieving dev instance IP address...'
-                        echo '-----------------------------------'
-                        // Get the IP address of the dev instance container
-                        def rawOutput = bat(
-                            script: "docker inspect -f \"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\" ${DEV_CONTAINER}",
-                            returnStdout: true
-                        ).trim()
-
-                        // Take only the last line (the real IP)
-                        def ip = rawOutput.readLines()[-1].trim()
-                        env.BASE_URL = "http://${ip}:${DEV_PORT}"
-                        echo "Dev instance host: ${env.BASE_URL}"
-                        echo '-----------------------------------'
-                        
-                        // Set the BASE_URL environment variable in the test container
-                        bat "docker exec ${TEST_CONTAINER} bash -c \"export BASE_URL=${env.BASE_URL}\""
-                        echo "BASE_URL set to ${env.BASE_URL} in test container."
-                        echo '-----------------------------------'
-                    }
-                }
-            }
         
         stage('Execute Test') {
             steps {
                 echo 'Starting test execution...'
                 echo '-----------------------------------'
                 // Execute tests with pytest, passing necessary environment variables
-                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && export BASE_URL=${env.BASE_URL} && pytest\""
+                bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pytest\""
                 echo 'Test execution completed.'
                 echo '-----------------------------------'
             }
