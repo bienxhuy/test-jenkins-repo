@@ -50,6 +50,13 @@ pipeline {
                         echo 'Repository cloned successfully.'
                         echo '-----------------------------------'
 
+
+                        // Set up local CDN
+                        echo 'Setting up local CDN...'
+                        echo '-----------------------------------'
+                        bat "docker exec ${DEV_CONTAINER} bash -c \"cd /app/test-instance && npm set registry http://verdaccio:4873/\""
+
+
                         // Install dependencies
                         echo 'Installing dependencies...'
                         echo '-----------------------------------'
