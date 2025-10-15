@@ -123,7 +123,7 @@ pipeline {
                         echo '-----------------------------------'
                         echo "TEST_CONTAINER:    ${TEST_CONTAINER}"
                         echo '-----------------------------------'
-                        bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install --index-url http://devpi:3141/root/pypi/+simple/ -r requirements.txt\""
+                        bat "docker exec ${TEST_CONTAINER} bash -c \"cd /app/devtest && pip install --index-url http://devpi:3141/root/pypi/+simple/ --trusted-host devpi -r requirements.txt\""
                         echo 'Python dependencies installed successfully.'
                         echo '-----------------------------------'
                     }
