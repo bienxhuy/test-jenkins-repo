@@ -46,7 +46,10 @@ pipeline {
                         echo "DEV_CONTAINER:  ${DEV_CONTAINER}"
                         echo "BRANCH:         ${BRANCH}"
                         echo '-----------------------------------'
-                        bat "docker exec ${DEV_CONTAINER} git clone -b ${BRANCH} https://github.com/bienxhuy/test-instance.git /app/test-instance"
+                        withCredentials([usernamePassword(credentialsId: 'devtest', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+                            // Clone the dev repository
+                            bat "docker exec ${DEV_CONTAINER} git clone -b ${BRANCH} https://%GIT_USERNAME%:%GIT_TOKEN%@github.com/bienxhuy/test-instance.git /app/test-instance"
+                        }
                         echo 'Repository cloned successfully.'
                         echo '-----------------------------------'
 
